@@ -1,0 +1,53 @@
+name: Build Sofle Firmware
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-sofle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout configuration repo (zmk-config)
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install west and dependencies
+        run: |
+          pip install west
+          west init -l config
+          west update
+          west zephyr-export
+          pip install -r zmk/app/requirements.txt
+
+      - name: Build Sofle Left
+        run: |
+          west build -s zmk/app -b nice_nano_v2 -- -DSHIELD="sofle_left nice_oled"
+
+      - name: Upload Left Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: sofle_left
+          path: build/zephyr/zmk.uf2
+
+      - name: Clean before Right build
+        run: rm -rf build
+
+      - name: Build Sofle Right
+        run: |
+          west build -s zmk/app -b nice_nano_v2 -- -DSHIELD="sofle_right nice_oled"
+
+      - name: Upload Right Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: sofle_right
+          path: build/zephyr/zmk.uf2
